@@ -16,7 +16,7 @@ Open http://localhost:8000/docs. Expand `POST /predict`, click **Try it out**, a
 
 The API runs independently of PostgreSQL. Compose includes a development database and initializes a predictions table for the module's database exercise; the API does not persist predictions.
 
-Local verification screenshot (before registry publication): [Swagger HTTP 200](./evidence/local-docs-200.png). This does not replace the required screenshot after pulling from Docker Hub.
+Published image: [vinchhieng/loan-api on Docker Hub](https://hub.docker.com/r/vinchhieng/loan-api). Both `1.0.0` and `latest` were published. [Step 4 screenshot after registry pull](./evidence/registry-docs-200.png).
 
 `MODEL_PATH` selects a JSON model file using the included schema. The default model is bundled in the image, so standalone runs need no local files. An invalid or missing model prevents startup.
 

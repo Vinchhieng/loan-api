@@ -140,9 +140,68 @@ docker run --rm --user 0 --mount "type=bind,source=$((Get-Location).Path),target
 
 Observed output: `1 passed, 1 warning in 1.12s`. Approval, rejection, and invalid income were checked. Warning: Starlette recommends httpx2 instead of httpx for its test client.
 
-## Publication and registry pull: PENDING
+## Publication and registry pull: VERIFIED
 
-Docker Hub username and interactive authentication are required. Neither image tag has been published or pulled from the registry. A local Swagger screenshot is not Step 4 evidence. After publishing both tags, remove local tags, run from Docker Hub, execute a prediction in /docs, and replace this section with the actual commands and screenshot.
+Commands executed:
+
+```powershell
+docker tag loan-api:1.0.0 vinchhieng/loan-api:1.0.0
+docker tag loan-api:1.0.0 vinchhieng/loan-api:latest
+docker push vinchhieng/loan-api:1.0.0
+docker push vinchhieng/loan-api:latest
+docker buildx imagetools inspect vinchhieng/loan-api:1.0.0
+docker buildx imagetools inspect vinchhieng/loan-api:latest
+```
+
+Both pushes succeeded. Both tags resolve to:
+
+```text
+sha256:9d77fca75f5d8efb71a2584116ec737a61b061a52d5437fc2d0f5cdadbca2baa
+```
+
+One initial registry inspection timed out during TLS authentication; retry succeeded. The [Docker Hub tags page](https://hub.docker.com/r/vinchhieng/loan-api/tags) was opened and both tags were visible. [Tags screenshot](./evidence/docker-hub-tags.png).
+
+### Step 4: remove local images, pull and run
+
+```powershell
+docker compose down
+docker rm -f loan-api-standalone
+docker image rm vinchhieng/loan-api:1.0.0 vinchhieng/loan-api:latest loan-api:1.0.0
+docker image ls --filter reference=vinchhieng/loan-api
+docker run --rm -d --name loan-api-registry -p 8000:8000 vinchhieng/loan-api:1.0.0
+```
+
+Observed output (relevant excerpts):
+
+```text
+Untagged: vinchhieng/loan-api:1.0.0
+Untagged: vinchhieng/loan-api:latest
+Untagged: loan-api:1.0.0
+Deleted: sha256:9d77fca75f5d8efb71a2584116ec737a61b061a52d5437fc2d0f5cdadbca2baa
+IMAGE   ID             DISK USAGE   CONTENT SIZE   EXTRA
+Unable to find image 'vinchhieng/loan-api:1.0.0' locally
+1.0.0: Pulling from vinchhieng/loan-api
+Digest: sha256:9d77fca75f5d8efb71a2584116ec737a61b061a52d5437fc2d0f5cdadbca2baa
+Status: Downloaded newer image for vinchhieng/loan-api:1.0.0
+342ce5308743e0d59f654ee01571812d6c661b5036a2a92e7961882cf64b8bfc
+```
+
+Docker reused cached layers, but the local image tags and image record were deleted before the registry pull. No local files were mounted. The container became healthy. The command uses detached mode to keep the terminal available while testing.
+
+Opened http://localhost:8000/docs, expanded POST /predict, clicked Try it out, and executed:
+
+```json
+{"annual_income":60000,"loan_amount":10000,"credit_score":720}
+```
+
+Actual Swagger server response:
+
+```text
+200
+{"prediction":"approved","model_version":"demo-1.0.0","demonstration_only":true}
+```
+
+[Required Step 4 screenshot: Swagger HTTP 200 after registry pull](./evidence/registry-docs-200.png).
 
 ## Assessment limitations
 
