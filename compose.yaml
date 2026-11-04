@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      MODEL_PATH: /app/models/model.json
+      MODEL_PATH: /app/model.joblib
     read_only: true
     tmpfs:
       - /tmp
@@ -20,18 +20,24 @@ services:
       db:
         condition: service_healthy
   db:
-    image: postgres:17-alpine
+    image: postgres:17
     environment:
-      POSTGRES_USER: loan
+      POSTGRES_USER: loans
       POSTGRES_DB: loans
-      POSTGRES_PASSWORD: development-only-password
+      POSTGRES_PASSWORD: loans_dev_only
     volumes:
-      - loan-data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U loan -d loans"]
+      test: ["CMD-SHELL", "pg_isready -U loans -d loans"]
       interval: 5s
       timeout: 3s
       retries: 10
+  adminer:
+    image: adminer:4.8.1
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      - db
 volumes:
-  loan-data:
+  pgdata:

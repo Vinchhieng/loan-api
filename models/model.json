@@ -1,6 +1,0 @@
-{
-  "kind": "demonstration_rules_v1",
-  "version": "demo-1.0.0",
-  "minimum_credit_score": 650,
-  "maximum_loan_income_ratio": 0.5
-}

@@ -1,42 +1,39 @@
-import json
 import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
+import joblib
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
+from schemas import LoanApplication, Prediction
 
-MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/model.json"))
+MODEL_PATH = os.getenv("MODEL_PATH", "model.joblib")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
-    if model.get("kind") != "demonstration_rules_v1":
-        raise ValueError("Unsupported model format")
+    # Load trusted artifacts only: Joblib deserialization can execute code.
+    model = joblib.load(MODEL_PATH)
+    if not all(key in model for key in ("model", "version", "features")):
+        raise ValueError("Invalid model artifact")
     app.state.model = model
     yield
+    del app.state.model
 
 
 app = FastAPI(title="Loan Prediction API", version="1.0.0", lifespan=lifespan,
-              description="Educational demonstration only. Uses illustrative rules, not a trained credit model.")
-
-
-class LoanApplication(BaseModel):
-    annual_income: float = Field(gt=0, le=1_000_000_000, examples=[60000])
-    loan_amount: float = Field(gt=0, le=1_000_000_000, examples=[10000])
-    credit_score: int = Field(ge=300, le=850, examples=[720])
+              description="Course deployment exercise. Model trained on synthetic data; not for real lending decisions.")
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "model_version": app.state.model["version"]}
 
 
-@app.post("/predict")
+@app.post("/predict", response_model=Prediction)
+@app.post("/api/v1/predictions", response_model=Prediction)
 def predict(application: LoanApplication):
-    model = app.state.model
-    approved = (application.credit_score >= model["minimum_credit_score"]
-                and application.loan_amount / application.annual_income <= model["maximum_loan_income_ratio"])
-    return {"prediction": "approved" if approved else "rejected",
-            "model_version": model["version"], "demonstration_only": True}
+    artifact = app.state.model
+    values = application.model_dump()
+    features = [[values[name] for name in artifact["features"]]]
+    approved = bool(artifact["model"].predict(features)[0])
+    return Prediction(prediction="approved" if approved else "rejected",
+                      model_version=artifact["version"], synthetic_training_data=True)

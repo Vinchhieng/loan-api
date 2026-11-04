@@ -13,3 +13,9 @@ tests
 evidence
 CHECKLIST.md
 README.md
+*.joblib
+models
+verify.ps1
+verify-lessons.ps1
+verify-release.py
+build-checklist.py
