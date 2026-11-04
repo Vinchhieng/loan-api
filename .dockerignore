@@ -6,6 +6,14 @@
 venv
 __pycache__
 .pytest_cache
+.mypy_cache
+.ruff_cache
+.vscode
+.idea
+.devcontainer
+compose*.yaml
+compose*.yml
+init.sql
 *.pyc
 *.pem
 *.key
@@ -19,3 +27,4 @@ verify.ps1
 verify-lessons.ps1
 verify-release.py
 build-checklist.py
+verify-rubric.py
