@@ -1,0 +1,37 @@
+services:
+  api:
+    image: loan-api:1.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_PATH: /app/models/model.json
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: loan
+      POSTGRES_DB: loans
+      POSTGRES_PASSWORD: development-only-password
+    volumes:
+      - loan-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loan -d loans"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  loan-data:

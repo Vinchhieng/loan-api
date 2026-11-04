@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+!.env.example
+.venv
+venv
+__pycache__
+.pytest_cache
+*.pyc
+*.pem
+*.key
+tests
+evidence
+CHECKLIST.md
+README.md
