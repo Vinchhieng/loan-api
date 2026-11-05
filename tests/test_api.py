@@ -37,6 +37,20 @@ def test_health_reports_release_sha(client, monkeypatch):
     assert client.get('/health').json()['git_sha'] == 'a' * 40
 
 
+def test_score_preview_contract(client, monkeypatch):
+    monkeypatch.setattr(main, 'API_KEY', 'preview-test-only')
+    payload = {'amount_usd': 1500, 'term_months': 12, 'monthly_income_usd': 350,
+               'previous_loans': 1, 'late_payments': 0}
+    route = '/api/v1/score'
+    assert client.post(route, json=payload).status_code == 401
+    headers = {'X-API-Key': 'preview-test-only'}
+    response = client.post(route, json=payload, headers=headers)
+    assert response.status_code == 200
+    assert 0 <= response.json()['probability_default'] <= 1
+    assert response.json()['model_version'] == '1'
+    assert client.post(route, json={}, headers=headers).status_code == 422
+
+
 def test_prediction_routes(client):
     payload = {'annual_income': 60000, 'loan_amount': 10000, 'credit_score': 720}
     for route in ('/predict', '/api/v1/predictions'):

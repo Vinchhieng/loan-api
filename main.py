@@ -5,6 +5,9 @@ from contextlib import asynccontextmanager
 import joblib
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
+from fastapi import Depends
+from pydantic import BaseModel, Field, ConfigDict
 from schemas import LoanApplication, Prediction
 from loan_store import LoanStore
 from loan_routes import router
@@ -33,6 +36,29 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Loan Prediction API", version="1.0.0", lifespan=lifespan,
               description="Course deployment exercise. Model trained on synthetic data; not for real lending decisions.")
 app.include_router(router)
+
+
+class ScoreApplicant(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    amount_usd: int = Field(ge=100, le=5000)
+    term_months: int = Field(ge=3, le=24)
+    monthly_income_usd: float = Field(gt=0)
+    previous_loans: int = Field(ge=0)
+    late_payments: int = Field(ge=0)
+
+
+class ScoreResult(BaseModel):
+    probability_default: float = Field(ge=0, le=1)
+    model_version: str
+
+
+@app.post('/api/v1/score', response_model=ScoreResult,
+          dependencies=[Depends(APIKeyHeader(name='X-API-Key', auto_error=False))])
+def score(applicant: ScoreApplicant):
+    """Preview default risk directly, without creating an application record."""
+    probability = app.state.champion.predict(applicant.model_dump())
+    return ScoreResult(probability_default=round(probability, 3),
+                       model_version=app.state.champion.version)
 
 
 @app.middleware("http")
