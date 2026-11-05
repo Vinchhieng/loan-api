@@ -51,6 +51,15 @@ def test_score_preview_contract(client, monkeypatch):
     assert client.post(route, json={}, headers=headers).status_code == 422
 
 
+def test_score_preserves_module5_default_probability(client):
+    # Recorded Module 5 applicant: default risk must not become approval probability.
+    payload = {'amount_usd': 1500, 'term_months': 12, 'monthly_income_usd': 350,
+               'previous_loans': 1, 'late_payments': 0}
+    response = client.post('/api/v1/score', json=payload)
+    assert response.status_code == 200
+    assert response.json()['probability_default'] == pytest.approx(0.278, abs=1e-12)
+
+
 def test_prediction_routes(client):
     payload = {'annual_income': 60000, 'loan_amount': 10000, 'credit_score': 720}
     for route in ('/predict', '/api/v1/predictions'):

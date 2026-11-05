@@ -77,6 +77,15 @@ if __name__ == '__main__':
     if status != 201:
         raise SystemExit(f'24-month contract check expected 201, received {status}')
     print('24-month application contract check passed')
+    score_payload = {'amount_usd': 1500, 'term_months': 12, 'monthly_income_usd': 350,
+                     'previous_loans': 1, 'late_payments': 0}
+    status, preview = request('/api/v1/score', key, score_payload)
+    evidence['score_preview'] = {'status': status, 'expected_probability': 0.278,
+                                 'actual_probability': preview.get('probability_default') if preview else None}
+    Path('release-evidence.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+    if status != 200 or abs(preview.get('probability_default', -1) - 0.278) > 1e-12:
+        raise SystemExit('Direct score default-probability regression detected')
+    print('Direct score Module 5 probability check passed')
     status, schema = request('/openapi.json')
     if status != 200 or '/api/v1/predictions' not in schema.get('paths', {}):
         raise SystemExit('OpenAPI verification failed')
