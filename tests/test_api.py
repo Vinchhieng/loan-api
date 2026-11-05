@@ -6,8 +6,9 @@ import main
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, tmp_path):
     monkeypatch.setattr(main, 'API_KEY', '')
+    monkeypatch.setattr(main, 'APPLICATION_DB_PATH', str(tmp_path / 'applications.db'))
     with TestClient(main.app) as value:
         yield value
 
@@ -15,7 +16,10 @@ def client(monkeypatch):
 def test_health(client):
     response = client.get('/health')
     assert response.status_code == 200
-    assert response.json() == {'status': 'ok', 'model_version': '1.0.0', 'git_sha': main.GIT_SHA}
+    body = response.json()
+    assert {key: body[key] for key in ('status', 'model_version', 'git_sha')} == {'status': 'ok', 'model_version': '1.0.0', 'git_sha': main.GIT_SHA}
+    assert body['champion']['version'] == '1'
+    assert body['champion']['run_id'] == '4e001c82aed946b8a11950c3b7278761'
 
 
 def test_api_key_and_legacy_route(client, monkeypatch):
@@ -52,6 +56,7 @@ def test_validation(client):
 
 
 def test_model_configuration_and_missing_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, 'APPLICATION_DB_PATH', str(tmp_path / 'applications.db'))
     artifact = joblib.load(main.MODEL_PATH)
     artifact['version'] = '1.1.0'
     alternate = tmp_path / 'alternate.joblib'

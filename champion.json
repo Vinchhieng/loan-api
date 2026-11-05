@@ -1,0 +1,50 @@
+{
+  "model_name": "loan-default",
+  "registry_version": "1",
+  "alias_at_export": "champion",
+  "run_id": "4e001c82aed946b8a11950c3b7278761",
+  "source_model_sha256": "09e34ff7f3ac79d0efedbc0787d0340c0aff6751f851870b1efa4fefbb5853d9",
+  "synthetic_training_data": true,
+  "features": [
+    "amount_usd",
+    "term_months",
+    "monthly_income_usd",
+    "previous_loans",
+    "late_payments"
+  ],
+  "mean": [
+    2741.845,
+    14.814,
+    400.0111630690475,
+    2.52475,
+    0.74075
+  ],
+  "scale": [
+    1297.8850730996946,
+    6.646307546299674,
+    100.97225210488554,
+    1.7093529294736065,
+    0.856177223184546
+  ],
+  "coefficients": [
+    0.9230070123291556,
+    -1.0146116627038744,
+    -0.514161840412841,
+    -0.2392117943587484,
+    0.6329155432666473
+  ],
+  "intercept": -0.4200372072169879,
+  "reference_case": {
+    "applicant": {
+      "amount_usd": 1500,
+      "term_months": 12,
+      "monthly_income_usd": 350.0,
+      "previous_loans": 1,
+      "late_payments": 0
+    },
+    "mlflow_probability": 0.27825003205504184,
+    "fastapi_probability": 0.27825003205504184,
+    "absolute_difference": 0.0,
+    "tolerance": 1e-12
+  }
+}

@@ -11,7 +11,9 @@ evidence/capstone/local-tests.xml
 *.pem
 *.key
 *.joblib
+*.db
 LOCAL-VERIFICATION.md
 test-results.xml
 release-evidence.json
+live-openapi.json
 deployment-request.json

@@ -42,6 +42,7 @@ if __name__ == '__main__':
         raise SystemExit('Release did not become healthy with expected SHA within 900 seconds')
     evidence = {'first_observed_healthy_at': live_at, 'health': health,
                 'verification_wait_seconds': round(time.monotonic() - started, 2), 'checks': []}
+    Path('release-evidence.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
     print(json.dumps(evidence))
     payload = {'annual_income': 60000, 'loan_amount': 10000, 'credit_score': 720}
     for path in ('/api/v1/predictions', '/predict'):
@@ -53,10 +54,34 @@ if __name__ == '__main__':
                 raise SystemExit('Known prediction regression detected')
             print(f'{path}: {label} key -> {status}')
             evidence['checks'].append({'path': path, 'key_case': label, 'status': status})
+    for supplied, expected_status, label in ((None, 401, 'missing'), ('invalid-drill-key', 401, 'invalid'), (key, 200, 'valid')):
+        status, body = request('/api/v1/applications', supplied)
+        if status != expected_status:
+            raise SystemExit(f'Application list: {label} key expected {expected_status}, received {status}')
+        if status == 200 and not isinstance(body.get('items'), list):
+            raise SystemExit('Application list does not contain a paginated items array')
+        print(f'/api/v1/applications: {label} key -> {status}')
+        evidence['checks'].append({'path': '/api/v1/applications', 'key_case': label, 'status': status})
+    status, application = request('/api/v1/applications', key, {'borrower_id': 1, 'amount_usd': 1500, 'term_months': 12})
+    if status != 201 or not isinstance(application.get('id'), int):
+        raise SystemExit('Synthetic application creation failed')
+    status, prediction = request(f"/api/v1/applications/{application['id']}/predictions", key, {})
+    if status != 201 or abs(prediction.get('default_probability', -1) - 0.27825003205504184) > 1e-12:
+        raise SystemExit('Registered champion parity check failed')
+    evidence['champion_parity'] = {'expected': 0.27825003205504184, 'actual': prediction['default_probability'],
+                                   'model_version': prediction['model_version'], 'tolerance': 1e-12}
+    print('Application workflow and registered champion parity passed')
+    status, _ = request('/api/v1/applications', key, {'borrower_id': 1, 'amount_usd': 1500, 'term_months': 24})
+    evidence['supported_24_month_term_status'] = status
+    Path('release-evidence.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+    if status != 201:
+        raise SystemExit(f'24-month contract check expected 201, received {status}')
+    print('24-month application contract check passed')
     status, schema = request('/openapi.json')
     if status != 200 or '/api/v1/predictions' not in schema.get('paths', {}):
         raise SystemExit('OpenAPI verification failed')
     evidence['verified_at'] = datetime.now(timezone.utc).isoformat()
     evidence['openapi_paths'] = sorted(schema['paths'])
     Path('release-evidence.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+    Path('live-openapi.json').write_text(json.dumps(schema, indent=2), encoding='utf-8')
     print('Release verification passed')

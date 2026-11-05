@@ -71,4 +71,6 @@ jobs:
         if: always()
         with:
           name: release-evidence
-          path: release-evidence.json
+          path: |
+            release-evidence.json
+            live-openapi.json
