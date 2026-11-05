@@ -35,7 +35,8 @@ def test_refuses_to_deploy_other_repository(deployment_env, monkeypatch):
     assert calls == ['GET']
 
 
-def test_pipeline_provisions_free_service_and_keeps_credentials_private(deployment_env, monkeypatch, capsys):
+@pytest.mark.parametrize('deploy_response', [{'id': 'dep-example'}, None])
+def test_pipeline_provisions_free_service_and_keeps_credentials_private(deployment_env, monkeypatch, capsys, deploy_response):
     calls = []
 
     def api(path, method='GET', payload=None):
@@ -44,7 +45,7 @@ def test_pipeline_provisions_free_service_and_keeps_credentials_private(deployme
             return []
         if path == '/services':
             return {'service': service()}
-        return {'id': 'dep-example'}
+        return deploy_response
 
     monkeypatch.setattr(deploy_render, 'render_request', api)
     deploy_render.deploy()
