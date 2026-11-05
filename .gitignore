@@ -1,11 +1,17 @@
 .env
 .env.*
 .venv/
+.venv313/
 venv/
 __pycache__/
 .pytest_cache/
+pytest-cache-files-*/
+evidence/capstone/local-tests.xml
 *.pyc
 *.pem
 *.key
 *.joblib
 LOCAL-VERIFICATION.md
+test-results.xml
+release-evidence.json
+deployment-request.json

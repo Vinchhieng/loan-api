@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: loan-api-capstone
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile.prod
+    autoDeployTrigger: 'off'
+    healthCheckPath: /health
+    envVars:
+      - key: API_KEY
+        sync: false

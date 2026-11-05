@@ -1,0 +1,74 @@
+name: Loan service CI and release
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: python train.py
+      - run: python -m pytest -v --junitxml=test-results.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+      - run: docker build -f Dockerfile.prod -t loan-api:check .
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.RENDER_OWNER_ID != ''
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      app_url: ${{ steps.render.outputs.app_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Provision and deploy this commit through Render
+        id: render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
+          RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: python scripts/deploy_render.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-request
+          path: deployment-request.json
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify live SHA and authentication
+        env:
+          APP_URL: ${{ needs.deploy.outputs.app_url }}
+          API_KEY: ${{ secrets.API_KEY }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: python scripts/verify_live.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-evidence
+          path: release-evidence.json

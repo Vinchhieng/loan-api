@@ -1,0 +1,509 @@
+openapi: 3.0.3
+info:
+  title: Loan Application Service API
+  version: 1.0.0
+  description: Submit and track microfinance loan applications. All operations require a Bearer token.
+    This specification uses a demonstration server URL.
+servers:
+- url: https://loans.example.com/api/v1
+  description: Illustrative loan service server; replace with the deployed API URL.
+tags:
+- name: applications
+  description: Submit, retrieve, and decide loan applications.
+- name: borrowers
+  description: Retrieve applications owned by a borrower.
+- name: predictions
+  description: Create risk predictions for applications.
+security:
+- bearerAuth: []
+paths:
+  /applications:
+    post:
+      summary: Submit a loan application
+      description: Create an application for an existing borrower. Amounts are whole US dollars.
+      tags:
+      - applications
+      responses:
+        '201':
+          description: Application created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+          headers:
+            Location:
+              description: URL of the created application.
+              schema:
+                type: string
+                description: Resource URL.
+                example: https://loans.example.com/api/v1/applications/7781
+                format: uri
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: The values break a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: amount_usd must be between 100 and 5000
+      requestBody:
+        required: true
+        description: Required application details.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreate'
+            example:
+              borrower_id: 1042
+              amount_usd: 1500
+              term_months: 12
+    get:
+      summary: List applications
+      description: Filter applications and paginate using an exclusive ID cursor.
+      tags:
+      - applications
+      responses:
+        '200':
+          description: One page of applications.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Invalid query parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: limit must be between 1 and 100
+      parameters:
+      - name: status
+        in: query
+        required: false
+        description: Only return applications with this status; omit to include all statuses.
+        schema:
+          type: string
+          description: Application status filter.
+          example: pending
+          enum:
+          - pending
+          - approved
+          - rejected
+      - name: province
+        in: query
+        required: false
+        description: Filter by the borrower province, for example Battambang.
+        schema:
+          type: string
+          description: Borrower province.
+          example: Battambang
+      - name: limit
+        in: query
+        required: false
+        description: Maximum items per page; defaults to 20 and cannot exceed 100.
+        schema:
+          type: integer
+          description: Page size.
+          example: 20
+          default: 20
+          minimum: 1
+          maximum: 100
+      - name: after
+        in: query
+        required: false
+        description: Return applications with IDs greater than this cursor, ordered by ID ascending. Omit
+          for the first page; use next_cursor for the next page.
+        schema:
+          type: integer
+          description: Exclusive application ID cursor.
+          example: 7781
+          minimum: 1
+  /applications/{application_id}:
+    parameters:
+    - name: application_id
+      in: path
+      required: true
+      description: Positive integer identifying the application.
+      schema:
+        type: integer
+        description: Resource identifier.
+        example: 7781
+        minimum: 1
+    get:
+      summary: Get one application
+      description: Read an application by its ID.
+      tags:
+      - applications
+      responses:
+        '200':
+          description: The requested application.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No application with this ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: Application 7781 not found
+    patch:
+      summary: Update application status
+      description: Approve or reject a pending application. Already-decided applications return 409.
+      tags:
+      - applications
+      responses:
+        '200':
+          description: The updated application.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No application with this ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: Application 7781 not found
+        '409':
+          description: The application has already been decided.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: Application 7781 is already approved
+        '422':
+          description: Invalid update body or status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: status must be approved or rejected; no other fields are allowed
+      requestBody:
+        required: true
+        description: The decision status only.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdate'
+            example:
+              status: approved
+  /borrowers/{borrower_id}/applications:
+    get:
+      summary: List a borrower's applications
+      description: Return a page of applications belonging to an existing borrower. An existing borrower
+        without applications returns an empty items array.
+      tags:
+      - borrowers
+      responses:
+        '200':
+          description: One page of the borrower's applications.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No borrower with this ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: Borrower 1042 not found
+        '400':
+          description: Invalid pagination parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: limit must be between 1 and 100
+      parameters:
+      - name: borrower_id
+        in: path
+        required: true
+        description: Positive integer identifying the borrower.
+        schema:
+          type: integer
+          description: Resource identifier.
+          example: 1042
+          minimum: 1
+      - name: limit
+        in: query
+        required: false
+        description: Maximum items per page; defaults to 20 and cannot exceed 100.
+        schema:
+          type: integer
+          description: Page size.
+          example: 20
+          default: 20
+          minimum: 1
+          maximum: 100
+      - name: after
+        in: query
+        required: false
+        description: Return applications with IDs greater than this cursor, ordered by ID ascending. Omit
+          for the first page; use next_cursor for the next page.
+        schema:
+          type: integer
+          description: Exclusive application ID cursor.
+          example: 7781
+          minimum: 1
+  /applications/{application_id}/predictions:
+    post:
+      summary: Create a risk prediction
+      description: Evaluate the existing application with the risk model and create a prediction. No request
+        body is needed; inputs are read from the application.
+      tags:
+      - predictions
+      responses:
+        '201':
+          description: Prediction created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prediction'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No application with this ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: Application 7781 not found
+        '422':
+          description: The application lacks required model inputs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: Application is missing required risk-model inputs
+      parameters:
+      - name: application_id
+        in: path
+        required: true
+        description: Positive integer identifying the application.
+        schema:
+          type: integer
+          description: Resource identifier.
+          example: 7781
+          minimum: 1
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Send the access token in the Authorization header as Bearer <token>.
+  responses:
+    Unauthorized:
+      description: Missing or invalid Bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: 'Authentication required: provide a valid Bearer token'
+  schemas:
+    ApplicationCreate:
+      type: object
+      description: Input for a new loan application.
+      additionalProperties: false
+      required:
+      - borrower_id
+      - amount_usd
+      - term_months
+      properties:
+        borrower_id:
+          type: integer
+          description: ID of the existing borrower.
+          example: 1042
+          minimum: 1
+        amount_usd:
+          type: integer
+          description: Requested amount in whole US dollars.
+          example: 1500
+          minimum: 100
+          maximum: 5000
+        term_months:
+          type: integer
+          description: Repayment term in months.
+          example: 12
+          enum:
+          - 3
+          - 6
+          - 12
+          - 18
+          - 24
+      example:
+        borrower_id: 1042
+        amount_usd: 1500
+        term_months: 12
+    Application:
+      type: object
+      description: Stored application including server-generated metadata.
+      required:
+      - id
+      - borrower_id
+      - amount_usd
+      - term_months
+      - status
+      - submitted_at
+      properties:
+        id:
+          type: integer
+          description: Server-assigned application ID.
+          example: 7781
+          minimum: 1
+          readOnly: true
+        borrower_id:
+          $ref: '#/components/schemas/ApplicationCreate/properties/borrower_id'
+        amount_usd:
+          $ref: '#/components/schemas/ApplicationCreate/properties/amount_usd'
+        term_months:
+          $ref: '#/components/schemas/ApplicationCreate/properties/term_months'
+        status:
+          type: string
+          description: Current application decision state.
+          example: pending
+          enum:
+          - pending
+          - approved
+          - rejected
+        submitted_at:
+          type: string
+          description: Submission timestamp with a UTC offset.
+          example: '2026-11-04T15:00:00Z'
+          format: date-time
+          readOnly: true
+      example:
+        borrower_id: 1042
+        amount_usd: 1500
+        term_months: 12
+        id: 7781
+        status: pending
+        submitted_at: '2026-11-04T15:00:00Z'
+    ApplicationUpdate:
+      type: object
+      description: Update only the status of a pending application. Other fields are rejected.
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          description: Final decision; an application already approved or rejected returns 409.
+          example: approved
+          enum:
+          - approved
+          - rejected
+      example:
+        status: approved
+    ApplicationList:
+      type: object
+      description: A page ordered by application ID ascending. A null next_cursor means no further page.
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          description: Applications in this page; empty if no matches.
+          items:
+            $ref: '#/components/schemas/Application'
+          example:
+          - borrower_id: 1042
+            amount_usd: 1500
+            term_months: 12
+            id: 7781
+            status: pending
+            submitted_at: '2026-11-04T15:00:00Z'
+        next_cursor:
+          type: integer
+          description: Use as after for the next page; null when there are no more results.
+          example: 7781
+          minimum: 1
+          nullable: true
+      example:
+        items:
+        - borrower_id: 1042
+          amount_usd: 1500
+          term_months: 12
+          id: 7781
+          status: pending
+          submitted_at: '2026-11-04T15:00:00Z'
+        next_cursor: null
+    Prediction:
+      type: object
+      description: Risk-model prediction for a loan application.
+      required:
+      - id
+      - application_id
+      - default_probability
+      - model_version
+      - created_at
+      properties:
+        id:
+          type: integer
+          description: Server-assigned prediction ID.
+          example: 901
+          minimum: 1
+          readOnly: true
+        application_id:
+          type: integer
+          description: Application evaluated by the model.
+          example: 7781
+          minimum: 1
+        default_probability:
+          type: number
+          description: Estimated probability of loan default, from 0 to 1.
+          example: 0.18
+          minimum: 0
+          maximum: 1
+        model_version:
+          type: string
+          description: Version of the model used for this prediction.
+          example: risk-model-1.0.0
+        created_at:
+          type: string
+          description: Prediction creation timestamp with a UTC offset.
+          example: '2026-11-04T15:01:00Z'
+          format: date-time
+          readOnly: true
+      example:
+        id: 901
+        application_id: 7781
+        default_probability: 0.18
+        model_version: risk-model-1.0.0
+        created_at: '2026-11-04T15:01:00Z'
+    Error:
+      type: object
+      description: A human-readable explanation of a failed request.
+      required:
+      - detail
+      properties:
+        detail:
+          type: string
+          description: Reason the request failed.
+          example: amount_usd must be between 100 and 5000
+      example:
+        detail: amount_usd must be between 100 and 5000
