@@ -13,7 +13,7 @@ class ApplicationCreate(BaseModel):
     model_config = ConfigDict(extra='forbid')
     borrower_id: int = Field(ge=1)
     amount_usd: int = Field(ge=100, le=5000)
-    term_months: Literal[3, 6, 12, 18]
+    term_months: Literal[3, 6, 12, 18, 24]
 
 
 class Application(ApplicationCreate):
