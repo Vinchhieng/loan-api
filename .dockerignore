@@ -24,6 +24,7 @@ evidence
 CHECKLIST.md
 README.md
 *.joblib
+*.db
 models
 verify.ps1
 verify-lessons.ps1
