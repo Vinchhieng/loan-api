@@ -6,13 +6,31 @@ import main
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    monkeypatch.setattr(main, 'API_KEY', '')
     with TestClient(main.app) as value:
         yield value
 
 
 def test_health(client):
-    assert client.get('/health').json() == {'status': 'ok', 'model_version': '1.0.0'}
+    response = client.get('/health')
+    assert response.status_code == 200
+    assert response.json() == {'status': 'ok', 'model_version': '1.0.0', 'git_sha': main.GIT_SHA}
+
+
+def test_api_key_and_legacy_route(client, monkeypatch):
+    monkeypatch.setattr(main, 'API_KEY', 'unit-test-only')
+    payload = {'annual_income': 60000, 'loan_amount': 10000, 'credit_score': 720}
+    assert client.get('/health').status_code == 200
+    for route in ('/predict', '/api/v1/predictions'):
+        assert client.post(route, json=payload).status_code == 401
+        assert client.post(route, json=payload, headers={'x-api-key': 'wrong'}).status_code == 401
+        assert client.post(route, json=payload, headers={'x-api-key': 'unit-test-only'}).status_code == 200
+
+
+def test_health_reports_release_sha(client, monkeypatch):
+    monkeypatch.setattr(main, 'GIT_SHA', 'a' * 40)
+    assert client.get('/health').json()['git_sha'] == 'a' * 40
 
 
 def test_prediction_routes(client):

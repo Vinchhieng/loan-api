@@ -1,11 +1,15 @@
 import os
+import hmac
 from contextlib import asynccontextmanager
 
 import joblib
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from schemas import LoanApplication, Prediction
 
 MODEL_PATH = os.getenv("MODEL_PATH", "model.joblib")
+GIT_SHA = os.getenv("RENDER_GIT_COMMIT", os.getenv("GIT_SHA", "local"))
+API_KEY = os.getenv("API_KEY", "")
 
 
 @asynccontextmanager
@@ -23,9 +27,18 @@ app = FastAPI(title="Loan Prediction API", version="1.0.0", lifespan=lifespan,
               description="Course deployment exercise. Model trained on synthetic data; not for real lending decisions.")
 
 
+@app.middleware("http")
+async def require_api_key(request: Request, call_next):
+    if API_KEY and (request.url.path.startswith("/api/") or request.url.path == "/predict"):
+        supplied = request.headers.get("x-api-key", "")
+        if not hmac.compare_digest(supplied.encode(), API_KEY.encode()):
+            return JSONResponse(status_code=401, content={"detail": "Missing or invalid API key"})
+    return await call_next(request)
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "model_version": app.state.model["version"]}
+    return {"status": "ok", "model_version": app.state.model["version"], "git_sha": GIT_SHA}
 
 
 @app.post("/predict", response_model=Prediction)

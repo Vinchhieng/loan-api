@@ -1,0 +1,73 @@
+name: Loan service CI and release
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: python train.py
+      - run: python -m pytest -v --junitxml=test-results.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+      - run: docker build -f Dockerfile.prod -t loan-api:check .
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.APP_URL != ''
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy this commit through Render
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os, urllib.request
+          hook = os.environ['DEPLOY_HOOK']
+          if not hook:
+              raise SystemExit('Configure RENDER_DEPLOY_HOOK_URL in the production environment')
+          url = hook + ('&' if '?' in hook else '?') + 'ref=' + os.environ['RELEASE_SHA']
+          try:
+              with urllib.request.urlopen(urllib.request.Request(url, method='POST'), timeout=60) as response:
+                  assert response.status in (200, 202), 'Deploy hook did not accept request'
+          except Exception:
+              raise SystemExit('Render deploy request failed; secret URL omitted') from None
+          print('Render accepted release ' + os.environ['RELEASE_SHA'])
+          PY
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify live SHA and authentication
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: python scripts/verify_live.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-evidence
+          path: release-evidence.json
