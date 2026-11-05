@@ -62,6 +62,13 @@ def test_contract_validation_and_missing_resources(client):
     assert client.post('/api/v1/applications/999/predictions').status_code == 404
 
 
+@pytest.mark.parametrize('term', [3, 6, 12, 18, 24])
+def test_all_supported_terms(client, term):
+    response = client.post('/api/v1/applications', json={'borrower_id': 1, 'amount_usd': 1500, 'term_months': term})
+    assert response.status_code == 201
+    assert response.json()['term_months'] == term
+
+
 def test_registered_champion_matches_module5_probability(client):
     row = create(client).json()
     response = client.post(f"/api/v1/applications/{row['id']}/predictions")

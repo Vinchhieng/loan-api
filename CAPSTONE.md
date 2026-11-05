@@ -1,39 +1,41 @@
 # Capstone evidence tracker
 
-Status: preparation in progress. No production release has been verified.
+Live service: https://loan-api-vinchhieng-capstone.onrender.com
+
+The authoritative release status is the latest main Actions run, including `verify`. This index records the verified baseline and controlled drill; the submitted report contains final recovery timestamps and screenshots.
 
 Repository: https://github.com/Vinchhieng/loan-api
 
 | Requirement | Evidence | Status |
 | --- | --- | --- |
-| Green main CI; required test check | PR #1 test run succeeded; main and required branch rule still pending | In progress |
-| Live OpenAPI comparison | Save live schema and compare with Module 2 | Pending |
-| Tracked runs, champion, memo | Module 5 evidence/lifecycle/report.md and registry.json | Available locally; not yet packaged |
-| Drift chart and alert plan | Module 5 evidence/lifecycle/drift.png and report.md | Available locally; not yet packaged |
-| Improvement through PR | API-key protection includes legacy prediction route; health reports release SHA | Implemented locally; PR pending |
-| Pipeline graph, verify log, live health | Actions test -> deploy -> verify | Workflow prepared; execution pending |
-| Merge to live timing | PR merged_at to first verified matching healthy SHA, UTC | Pending; verification wait alone is not this timing |
-| API-key checks and TLS grade | Public health; missing key 401; valid key 200; additionally invalid key 401 | Live checks pending |
-| Bad-release drill and prevention test | Failing PR/run or rollback run, recovered health, regression test | Pending; exact course drill not supplied |
-| Recovery timing | Rollback request UTC to first healthy recovered SHA UTC | Pending |
-| Five-minute slides | Architecture, decision, trade-off, next steps | Pending |
+| Green main CI; required test check | Main baseline run 41977811694 passed all three jobs; main requires test with administrator bypass disabled | Recorded |
+| Live OpenAPI comparison | All six Module 2 operation/path pairs matched the live schema; three extra operational/legacy routes | Recorded |
+| Tracked runs, champion, memo | Six Module 5 runs and registry metadata; numeric serving snapshot identifies the exact champion run | Gathered |
+| Drift chart and alert plan | Fourteen-day synthetic chart and calibrated 95th/99th percentile alert policy in submitted evidence | Gathered |
+| Improvement through PR | PR #1 security/pipeline and PR #3 application API/champion integration | Merged |
+| Pipeline graph, verify log, live health | Main baseline run 41977811694; pipeline provisions even the first Render service | Passed |
+| Merge to live timing | PR #3 merged 06:02:49Z; first matching healthy observation 06:04:59.137514Z | 130.137514 seconds |
+| API-key checks and TLS grade | Application list: missing 401, invalid 401, valid 200; public health; SSL Labs A on both endpoints | Recorded |
+| Bad-release drill and prevention test | PR #4 removed valid 24-month terms; live verifier failed with 422 instead of 201; the new parametrized test reproduced the defect | Caught |
+| Recovery | This correction restores 24-month terms and tests all five supported values; recovery starts 06:32:28Z | Final observed duration in submitted report |
+| Five-minute slides | Architecture, frozen-model decision, ephemeral-storage trade-off, operational timings, next steps | Supplied with report |
 
-## Setup remaining
+## Operational setup
 
-1. Merge a green foundation PR after configuring a branch rule requiring the `test` job.
+1. Main requires a PR, passing test, and an up-to-date branch. These rules also apply to administrators.
 2. The pipeline now creates the free Render Docker service itself, with Dockerfile.prod, /health, API_KEY, and auto-deploy disabled. Do not create or deploy it by hand.
 3. GitHub repository secrets RENDER_API_KEY and API_KEY and the RENDER_OWNER_ID variable are configured. Secret values are not committed. The deploy job emits the public app URL for the verify job; no APP_URL variable or deploy-hook secret is needed.
-4. Merge the green PR and run the release workflow on main. Capture the graph and verify log; use the first verified health SHA timestamp for release evidence. Retain deployment-request and release-evidence artifacts.
-5. Ship a subsequent improvement via PR and measure merge to live. Revert any bad release via PR so recovery also passes through the pipeline.
+4. Every main merge runs test, deploy and verify. Artifacts retain the deployment request, live health/checks, and OpenAPI. A failed verify job means release verification failed even if health is green.
+5. Recovery follows the same PR and pipeline route. No dashboard Manual Deploy was used. The bad-release exercise instructions were not supplied in full, so the submitted report describes this equivalent controlled drill explicitly.
 
 ## Contract differences identified before deployment
 
-Module 2 uses server prefix /api/v1 and defines application creation/list/get/update, borrower application listing, and application-bound predictions. The current deployment project implements standalone POST /api/v1/predictions plus legacy POST /predict and GET /health. The Module 2 application routes are absent: this remains a contract gap, not an endpoint match. The API-key lesson replaces the specification's Bearer authentication with X-API-Key; document that intentional authentication change. The legacy route receives identical protection to prevent bypassing authentication.
+All six required operation/path pairs are implemented with the /api/v1 server prefix. Intentional changes: X-API-Key replaces Bearer authentication; three operational/legacy routes are added; manually validated pagination query schemas use strings; creation for an unknown borrower additionally returns 404; generated OpenAPI is 3.1 instead of 3.0. See [application documentation](./APPLICATIONS.md).
 
 ## Model limitation
 
-The current Docker entrypoint serves the Module 4 synthetic decision tree. Module 5's registered champion is a separate logistic-regression lifecycle service. Gathering its lifecycle evidence does not prove the Docker service serves that champion. Champion integration remains an explicit capstone decision to resolve before final submission. All models use synthetic data and must not be used for real lending.
+Application-bound predictions serve the exact frozen Module 5 champion, version 1, run 4e001c82aed946b8a11950c3b7278761. Its numeric export records provenance and reproduces the reference MLflow probability within 1e-12. The original decision tree remains on legacy standalone routes; health distinguishes both models. All data is synthetic. Free-tier SQLite storage is erased when the container filesystem is replaced; durable PostgreSQL and independent outcome validation remain next steps. Never use this classroom service for real lending.
 
 ## Pull request
 
-[PR #1](https://github.com/Vinchhieng/loan-api/pull/1). Its initial test run [41972609326](https://github.com/Vinchhieng/loan-api/actions/runs/41972609326) passed tests and the production image build. The pipeline-only provisioning update must pass its own CI run before merge.
+[Security/pipeline PR #1](https://github.com/Vinchhieng/loan-api/pull/1), [deployment-response fix #2](https://github.com/Vinchhieng/loan-api/pull/2), [application/champion PR #3](https://github.com/Vinchhieng/loan-api/pull/3), [controlled fault #4](https://github.com/Vinchhieng/loan-api/pull/4). The new [supported-term regression test](./tests/test_applications.py) fails on the bad implementation and passes after restoration.
