@@ -12,7 +12,7 @@ Identifier = Annotated[int, Path(ge=1)]
 class ApplicationCreate(BaseModel):
     model_config = ConfigDict(extra='forbid')
     borrower_id: int = Field(ge=1)
-    amount_usd: int = Field(ge=100, le=5000)
+    amount_usd: int = Field(ge=100, le=9000)
     term_months: Literal[3, 6, 12, 18, 24]
 
 
