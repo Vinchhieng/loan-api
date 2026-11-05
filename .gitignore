@@ -14,3 +14,4 @@ evidence/capstone/local-tests.xml
 LOCAL-VERIFICATION.md
 test-results.xml
 release-evidence.json
+deployment-request.json

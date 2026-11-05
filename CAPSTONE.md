@@ -6,7 +6,7 @@ Repository: https://github.com/Vinchhieng/loan-api
 
 | Requirement | Evidence | Status |
 | --- | --- | --- |
-| Green main CI; required test check | Actions run URL and branch-rule screenshot | Pending |
+| Green main CI; required test check | PR #1 test run succeeded; main and required branch rule still pending | In progress |
 | Live OpenAPI comparison | Save live schema and compare with Module 2 | Pending |
 | Tracked runs, champion, memo | Module 5 evidence/lifecycle/report.md and registry.json | Available locally; not yet packaged |
 | Drift chart and alert plan | Module 5 evidence/lifecycle/drift.png and report.md | Available locally; not yet packaged |
@@ -21,9 +21,9 @@ Repository: https://github.com/Vinchhieng/loan-api
 ## Setup remaining
 
 1. Merge a green foundation PR after configuring a branch rule requiring the `test` job.
-2. Create a Render web service linked to this repository, Docker runtime, Dockerfile.prod, health path /health. Configure API_KEY privately. Keep automatic deployments off for pipeline-controlled releases. Initial service creation can trigger a deployment; record this bootstrap separately and do not claim it as a pipeline release.
-3. Store Render's deploy hook as RENDER_DEPLOY_HOOK_URL in GitHub's production environment. Store the same API_KEY there; set repository variable APP_URL to the HTTPS service URL. Do not paste secrets into documents or logs.
-4. Run the release workflow on main. Capture the graph and verify log; use the first verified health SHA timestamp for release evidence.
+2. The pipeline now creates the free Render Docker service itself, with Dockerfile.prod, /health, API_KEY, and auto-deploy disabled. Do not create or deploy it by hand.
+3. GitHub repository secrets RENDER_API_KEY and API_KEY and the RENDER_OWNER_ID variable are configured. Secret values are not committed. The deploy job emits the public app URL for the verify job; no APP_URL variable or deploy-hook secret is needed.
+4. Merge the green PR and run the release workflow on main. Capture the graph and verify log; use the first verified health SHA timestamp for release evidence. Retain deployment-request and release-evidence artifacts.
 5. Ship a subsequent improvement via PR and measure merge to live. Revert any bad release via PR so recovery also passes through the pipeline.
 
 ## Contract differences identified before deployment
@@ -33,3 +33,7 @@ Module 2 uses server prefix /api/v1 and defines application creation/list/get/up
 ## Model limitation
 
 The current Docker entrypoint serves the Module 4 synthetic decision tree. Module 5's registered champion is a separate logistic-regression lifecycle service. Gathering its lifecycle evidence does not prove the Docker service serves that champion. Champion integration remains an explicit capstone decision to resolve before final submission. All models use synthetic data and must not be used for real lending.
+
+## Pull request
+
+[PR #1](https://github.com/Vinchhieng/loan-api/pull/1). Its initial test run [41972609326](https://github.com/Vinchhieng/loan-api/actions/runs/41972609326) passed tests and the production image build. The pipeline-only provisioning update must pass its own CI run before merge.
