@@ -71,7 +71,7 @@ def deploy():
     if not app_url.startswith('https://'):
         raise SystemExit('Render did not provide an HTTPS service URL')
     requested_at = datetime.now(timezone.utc).isoformat()
-    release = render_request('/services/' + service_id + '/deploys', 'POST', {'commitId': sha})
+    release = render_request('/services/' + service_id + '/deploys', 'POST', {'commitId': sha}) or {}
     evidence = {'service_id': service_id, 'service_created_by_pipeline': created,
                 'app_url': app_url, 'requested_sha': sha, 'deploy_id': release.get('id'),
                 'deploy_requested_at': requested_at}
