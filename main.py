@@ -57,7 +57,7 @@ class ScoreResult(BaseModel):
 def score(applicant: ScoreApplicant):
     """Preview default risk directly, without creating an application record."""
     probability = app.state.champion.predict(applicant.model_dump())
-    return ScoreResult(probability_default=round(probability, 3),
+    return ScoreResult(probability_default=round(1 - probability, 3),
                        model_version=app.state.champion.version)
 
 
